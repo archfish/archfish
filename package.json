@@ -1,0 +1,29 @@
+{
+    "name": "archfish",
+    "title": "Archfish Blog",
+    "author": "d2VpaGwgPHdlaWhhaWxhbmdAZ21haWwuY29tPg==",
+    "version": "1.7.0",
+    "homepage": "http://archfish.github.io",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/archfish/archfish.github.io"
+    },
+    "bugs": "https://github.com/archfish/archfish.github.io/issues",
+    "devDependencies": {
+        "grunt": "^1.0.3",
+        "grunt-banner": "~0.2.3",
+        "grunt-cli": "^1.2.0",
+        "grunt-contrib-less": "^2.0.0",
+        "grunt-contrib-uglify": "^3.3.0",
+        "grunt-contrib-watch": "^1.1.0"
+    },
+    "scripts": {
+        "preview": "cd _site; python -m SimpleHTTPServer 8020",
+        "py3view": "cd _site; python3 -m http.server 8020",
+        "watch": "grunt watch & npm run preview & jekyll serve -w",
+        "py3wa": "grunt watch & npm run py3view & jekyll serve -w",
+        "boil": "git push boilerplate boilerplate:master",
+        "push": "git push origin master --tag",
+        "cafe": "git co gitcafe-pages; git merge master; git push gitcafe gitcafe-pages:gitcafe-pages --tag; git co master;"
+    }
+}
