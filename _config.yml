@@ -35,7 +35,7 @@ paginate: 10
 exclude: [
   "less", "node_modules", "Gruntfile.js", "package.json",
   "README.md", "README.zh.md", 'package-lock.json',
-  'new_post.rb', 'Gemfile', 'Gemfile.lock'
+  'new_post.rb', 'Gemfile', 'Gemfile.lock', 'release.sh'
 ]
 anchorjs: false                          # if you want to customize anchor. check out line:181 of `post.html`
 
