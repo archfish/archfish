@@ -35,7 +35,7 @@ paginate: 10
 exclude: [
   "less", "node_modules", "Gruntfile.js", "package.json",
   "README.md", "README.zh.md", 'package-lock.json',
-  'new_post.rb', 'Gemfile', 'Gemfile.lock', 'release.sh'
+  'tool.rb', 'Gemfile', 'Gemfile.lock'
 ]
 anchorjs: false                          # if you want to customize anchor. check out line:181 of `post.html`
 
@@ -87,7 +87,6 @@ sidebar-avatar: /img/avatar-small.jpg      # use absolute URL, seeing it's used 
 # Featured Tags
 featured-tags: true                     # whether or not using Feature-Tags
 featured-condition-size: 1              # A tag will be featured if the size of it is more than this condition value
-
 
 
 # Progressive Web Apps
