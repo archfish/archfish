@@ -20,7 +20,7 @@ RSS: false
 # weibo_username:     archfish
 # zhihu_username:     archfish
 github_username:    archfish
-github_repo:    'archfish.github.io'
+github_repo:    'archfish'
 # twitter_username:   archfish
 #facebook_username:  archfish
 #linkedin_username:  firstname-lastname-idxxxx
@@ -85,7 +85,7 @@ sidebar-avatar: /img/avatar-small.jpg      # use absolute URL, seeing it's used 
 
 
 # Featured Tags
-featured-tags: true                     # whether or not using Feature-Tags
+featured-tags: false                     # whether or not using Feature-Tags
 featured-condition-size: 1              # A tag will be featured if the size of it is more than this condition value
 
 

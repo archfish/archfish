@@ -11,3 +11,5 @@
 ```shell
 ./tool.rb publish
 ```
+
+欢迎吐槽[我的博客](https://archfish.github.io)

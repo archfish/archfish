@@ -10,23 +10,23 @@ def new_post(*args)
   post = "./_posts/#{date_prefix}-#{postname}.md"
 
   header = <<-HEAD
-  ---
-  layout:       post
-  title:        #{title}
-  subtitle:     #{title}
-  date:         #{Time.now}
-  author:       Archfish
-  header-img:   "img/here/custom/header/image.png"
-  header-mask:  0.1
-  multilingual: false
-  tags:
-    - tag1
-    - tag2
-  ---
+---
+layout:       post
+title:        #{title}
+subtitle:     #{title}
+date:         #{Time.now}
+author:       Archfish
+header-img:   "img/here/custom/header/image.png"
+header-mask:  0.1
+multilingual: false
+tags:
+  - tag1
+  - tag2
+---
 
-  欢迎跟我交流 [Archfish][0]
+欢迎跟我交流 [Archfish][0]
 
-  [0]: https://github.com/archfish/archfish "archfish blog"
+[0]: https://github.com/archfish/archfish "archfish blog"
   HEAD
 
   File.open(post, 'w') { |f| f << header }
