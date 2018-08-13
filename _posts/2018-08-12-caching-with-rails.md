@@ -302,6 +302,8 @@ queue: [:event1, :event2, :event3, :event4]
 
 本文只在做数据库读写分离前适用，读写分离后缓存管理要复杂得多，这里不做讨论。
 
+- - -
+
 欢迎跟我交流 [Archfish][0]
 
 [1]: https://guides.rubyonrails.org/caching_with_rails.html#low-level-caching "Rails#cache"

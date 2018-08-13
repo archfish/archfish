@@ -146,6 +146,8 @@ end
 到此，我们的日志模块就设计好了。title和body部分除了使用竖线分割外，为了正确切割出实际内容增加了额外标记`##+`和`-##`，这样logstash在切分时就不会出错了。
 如果需要对日志格式进行调整，只需要升级`VERSION`编号即可，理论上通过对logstash的规则进行定制，多版本同时存在应该是没什么问题的。
 
+- - -
+
 欢迎跟我交流 [Archfish][0]
 
 [0]: https://github.com/archfish/archfish "archfish blog"
