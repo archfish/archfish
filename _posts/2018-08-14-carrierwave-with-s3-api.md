@@ -64,9 +64,10 @@ CarrierWave.configure do |config|
   # 该参数用于设置图片访问域名
   # config.asset_host = File.join(endpoint, bucket)
 
-  config.aws_authenticated_url_expiration = 1.days.to_i
+  # 隐私文件开放时间，过期则返回403
+  config.aws_authenticated_url_expiration = 30.minute.to_i
+
   config.aws_attributes = {
-    # expires: 1.week.from_now.httpdate,
     cache_control: 'max-age=604800'
   }
 
