@@ -83,6 +83,8 @@ end
 ```
 
 ```ruby
+# base_uploader.rb
+
 class BaseUploader < CarrierWave::Uploader::Base
   include CarrierWave::MiniMagick
   storage :aws
@@ -127,6 +129,128 @@ end
 
 经过上面的修改之后相同的接口就能直接适配S3存储，同时隐私文件夹通过设置合理的expires即可限制资源的访问。
 
+# 生产环境
+
+通过Nginx将内部服务暴露到公网中，这时你会遇到一个[bug][4]，还有这个[bug][5]。所以在业务需要处理1XX状态码时不宜使用nginx作为反向代理。
+
+整个流程搞定以后我也进行了反思：
+
+- 对于文件上传，通过nginx会增加不必要的代理层；
+- 在这个需求中我只希望通过外网可以访问文件而不需要外网（通过Nginx代理）直接上传文件；
+- 文件上传使用内部网络（IP+端口方式）可以减少DNS环节，虽然可以设置内部DNS为内部地址，提高稳定性；
+
+于是改变思路，默认endpoint还是内网的IP+PORT方式，在获取URL时，创建一个新的client用于对文件URL进行签名，最终的代码如下：
+
+```ruby
+# config/initializers/carrierwave.rb
+
+CarrierWave.configure do |config|
+
+  ...
+
+  # 设置CDN域名+bucket名
+  config.asset_host = File.join(CDN_DOMAIN, bucket)
+
+  ...
+end
+```
+
+```ruby
+# base_uploader.rb
+
+# 获取图片外部访问地址，有CDN可用时使用CDN
+def external_url
+  return if self.blank?
+
+  # 私有文件会带上一些鉴权参数，不能对其进行修改
+  return authenticated_url unless public_file?
+
+  s = (self.model.try(:updated_at) || self.model.try(:created_at) || Time.current).tv_sec
+  s = "?t=#{s}"
+
+  url_ = self.url
+  # 自定义 asset_host 时不做替换
+  if self.asset_host.blank?
+    url_ = url_.sub(backend_domain, cdn_domain)
+  end
+  url_ + s
+end
+
+# 用于修改aws endpoint到图片服务器
+def authenticated_url
+  # 不能修改 self.aws_credentials 的内容，否则会影响之后的文件上传操作
+  options = self.aws_credentials.merge(endpoint: APP_CONFIG['ceph_image_gateway'])
+  # 新建一个bucket客户端，用于访问对象
+  bucket = Aws::S3::Bucket.new(self.aws_bucket, options)
+  # 预签名URL，加上验签信息
+  bucket.object(path).presigned_url(:get, self.file.aws_options.expiration_options)
+end
+```
+
+# 附录
+
+附上我排查bug的流程：
+
+- 打开ceph rgw的`debug 20`模式；
+- 关闭osd日志（这里有很多集群消息）；
+- 使用s3cmd工具上传文件并将日志拷贝出来（s3cmd不使用100状态码，所以经过nginx以后还是能正常上传文件）；
+- 使用s3 ruby sdk上传文件，并将日志拷贝出来
+- 比对两次日志即可发现sdk里使用的是100状态实现首次请求不带任何body只验证权限和路径等信息，[参考S3实现][6]
+
+```logger
+# s3cmd
+
+2018-08-20 11:43:05.426 7f789febc700 20 CONTENT_LENGTH=392424
+2018-08-20 11:43:05.426 7f789febc700 20 CONTENT_TYPE=image/jpeg
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_ACCEPT_ENCODING=identity
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_AUTHORIZATION=AWS4-HMAC-SHA256 Credential=QZPWZQQ4PCUVXKZA1CK4/20180820/us-east-1/s3/aws4_request,SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-s3cmd-attrs;x-amz-storage-class,Signature=7dad3193636d4d3c66b2a06877c135d50834fbb9f7a94c26c3c8a198cd81a14e
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_HOST=my.local.lan
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_VERSION=1.1
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_AMZ_CONTENT_SHA256=867a5e890d8e8b156d16d33d8bbc135fd4d3b8f73844fb2d2e69df668fc4447c
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_AMZ_DATE=20180820T034305Z
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_AMZ_META_S3CMD_ATTRS=atime:1534736585/ctime:1532484245/gid:20/gname:staff/md5:cfef3b9dac46df5d717e32ca33d3e7da/mode:33188/mtime:1532412861/uid:501/uname:weihl
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_AMZ_STORAGE_CLASS=STANDARD
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_FORWARDED_BY=127.0.0.1:80
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_FORWARDED_FOR=127.0.0.1
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_FORWARDED_PROTO=http
+2018-08-20 11:43:05.426 7f789febc700 20 HTTP_X_REAL_IP=127.0.0.1
+2018-08-20 11:43:05.426 7f789febc700 20 REMOTE_ADDR=192.168.15.58
+2018-08-20 11:43:05.426 7f789febc700 20 REQUEST_METHOD=PUT
+2018-08-20 11:43:05.426 7f789febc700 20 REQUEST_URI=/reocar/reocar.jpg
+2018-08-20 11:43:05.426 7f789febc700 20 SCRIPT_URI=/reocar/reocar.jpg
+2018-08-20 11:43:05.426 7f789febc700 20 SERVER_PORT=7480
+2018-08-20 11:43:05.426 7f789febc700  1 ====== starting new request req=0x7f789feb3830 =====
+...
+```
+
+```logger
+# ruby sdk
+
+2018-08-20 11:45:14.781 7f789febc700 20 CONTENT_LENGTH=392424
+2018-08-20 11:45:14.781 7f789febc700 20 CONTENT_TYPE=
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_ACCEPT=*/*
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_ACCEPT_ENCODING=
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_AUTHORIZATION=AWS4-HMAC-SHA256 Credential=QZPWZQQ4PCUVXKZA1CK4/20180820/us-east-1/s3/aws4_request, SignedHeaders=content-md5;expect;host;user-agent;x-amz-content-sha256;x-amz-date, Signature=6186f7dd9c9a33be40a91afd1ce0a9c4ce5cb8b830962764cebef6143d4913a3
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_CONTENT_MD5=z+87naxG311xfjLKM9Pn2g==
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_EXPECT=100-continue
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_HOST=my.local.lan
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_USER_AGENT=aws-sdk-ruby3/3.23.0 ruby/2.1.9 x86_64-darwin17.0 aws-sdk-s3/1.17.0
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_VERSION=1.1
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_X_AMZ_CONTENT_SHA256=867a5e890d8e8b156d16d33d8bbc135fd4d3b8f73844fb2d2e69df668fc4447c
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_X_AMZ_DATE=20180820T034514Z
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_X_FORWARDED_BY=127.0.0.1:80
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_X_FORWARDED_FOR=127.0.0.1
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_X_FORWARDED_PROTO=http
+2018-08-20 11:45:14.781 7f789febc700 20 HTTP_X_REAL_IP=127.0.0.1
+2018-08-20 11:45:14.781 7f789febc700 20 REMOTE_ADDR=192.168.15.58
+2018-08-20 11:45:14.781 7f789febc700 20 REQUEST_METHOD=PUT
+2018-08-20 11:45:14.781 7f789febc700 20 REQUEST_URI=/reocar/reocar.jpg
+2018-08-20 11:45:14.781 7f789febc700 20 SCRIPT_URI=/reocar/reocar.jpg
+2018-08-20 11:45:14.781 7f789febc700 20 SERVER_PORT=7480
+2018-08-20 11:45:14.781 7f789febc700  1 ====== starting new request req=0x7f789feb3830 =====
+...
+```
+
 - - -
 
 欢迎跟我交流 [Archfish][0]
@@ -135,3 +259,6 @@ end
 [1]: https://github.com/carrierwaveuploader/carrierwave "CarrierWave"
 [2]: https://github.com/sorentwo/carrierwave-aws "carrierwave-aws"
 [3]: https://github.com/aws/aws-sdk-ruby "aws-sdk-ruby"
+[4]: https://tracker.ceph.com/issues/23149 "Aws::S3::Errors::SignatureDoesNotMatch"
+[5]: https://trac.nginx.org/nginx/ticket/1293 "nginx http proxy stops sending request data after first byte of server response is received"
+[6]: https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/API/RESTObjectPUT.html "PUT Object"
