@@ -187,6 +187,24 @@ def authenticated_url
 end
 ```
 
+# CORS
+
+为了正常嵌入其它域名的页面中，可能需要配置bucket允许跨域请求，这里提供一个[模板][7]，在bucket上配置以后就不需要在nginx上配置了，否则可能会出现[错误][8]。在给配置方案时，运维同学理解出现偏差，除了对S3 bucket进行操作，还同时配置了nginx，导致我花了一个小时去排查这个问题。
+
+```xml
+<!-- cors.xml -->
+<CORSConfiguration>
+ <CORSRule>
+   <AllowedOrigin>*</AllowedOrigin>
+   <AllowedMethod>GET</AllowedMethod>
+ </CORSRule>
+</CORSConfiguration>
+```
+
+```shell
+s3cmd setcors cors.xml s3://reocar/
+```
+
 # 附录
 
 附上我排查bug的流程：
@@ -262,3 +280,5 @@ end
 [4]: https://tracker.ceph.com/issues/23149 "Aws::S3::Errors::SignatureDoesNotMatch"
 [5]: https://trac.nginx.org/nginx/ticket/1293 "nginx http proxy stops sending request data after first byte of server response is received"
 [6]: https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/API/RESTObjectPUT.html "PUT Object"
+[7]: https://docs.aws.amazon.com/zh_cn/AmazonS3/latest/dev/cors.html "跨源资源共享 (CORS)"
+[8]: https://github.com/aspnet/CORS/issues/129 "The 'Access-Control-Allow-Origin' header contains multiple values '*, *', but only one is allowed"
