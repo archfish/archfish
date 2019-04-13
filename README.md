@@ -3,7 +3,7 @@
 ## 创建新的文章
 
 ```shell
-./tool.rb new [你的文章名]
+./tool.rb new [文章名]
 ```
 
 ## 发布到GitHub
