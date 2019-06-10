@@ -9,7 +9,7 @@ multilingual: false
 tags:
   - macOS
   - brew
-  - ruby
+  - Ruby
 ---
 
 系统自带了一个ruby，但是这个ruby是保存在系统库中的，如果需要安装gem则会提示无权限`You don't have write permissions for the /Library/Ruby/Gems/2.3 directory.`。那么rvm呢，这货在安装ruby-2.3版本的时候总会出现openssl问题。

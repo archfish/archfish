@@ -7,9 +7,9 @@ author:       Archfish
 header-mask:  0.1
 multilingual: false
 tags:
-  - rails
+  - Rails
   - PostgreSQL
-  - postgis
+  - Postgis
 ---
 
 rails中每种数据库都有自己的adapter，这些adapter负责处理数据库的各种数据类型，但是设计上无法自行增加新数据类型。使用postgis功能通常使用的是[active-record-postgis-adapter][1]，由于Reocar使用的功能仅仅是计算坐标点间的距离，增加这样一层适配器会导致应用结构变得复杂，同时也可能会引入[新的问题][2]。在实现现有功能的情况下尝试移除active-record-postgis-adapter。
